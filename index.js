@@ -155,7 +155,7 @@ const FANCENTRO_API_URL = 'https://fancentro.com/external';
 const EMAIL             = 'vtarabcakova@gmail.com';
 const PASSWORD          = '92hf83jsba&1';
 const SECRET            = '75f2bd1131870721df8eb57d322e8adb';
-
+const tills = Math.floor(Date.now() / 1000) + 3600;
 // Enable CORS & JSON body‑parsing
 app.use(cors());
 app.use(express.json());
@@ -182,6 +182,46 @@ console.log(EMAIL, till, hash);
   }
 }
 
+app.post('/generate-hash', (req, res) => {
+  try {
+    // const { password, secret, till } = req.body;
+
+    if (!PASSWORD|| !SECRET || !tills) {
+      return res.status(400).json({
+        status: false,
+        error: 'Missing required parameters: password, secret, and till are required'
+      });
+    }
+
+    // Generate a 16-byte random initialization vector (IV)
+    const iv = crypto.randomBytes(16);
+    
+    // Create plaintext in the format "till.password"
+    const plaintext = `${tills}.${PASSWORD}`;
+    
+    // Create a cipher using the secret key and the IV in AES-128-CBC mode
+    const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(SECRET, 'hex'), iv);
+    
+    // Encrypt the text (with padding) and combine output parts
+    const encryptedText = cipher.update(plaintext, 'utf8', 'hex') + cipher.final('hex');
+    
+    // Return a string in the format "iv_hex.encryptedText_hex"
+    const hash = iv.toString('hex') + '.' + encryptedText;
+
+    res.json({
+      status: true,
+      response: {
+        hash,
+        tills
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      error: error.message
+    });
+  }
+});
 // POST /auth → returns FanCentro auth token
 app.post('/auth', async (req, res) => {
   try {
